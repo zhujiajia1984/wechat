@@ -2,9 +2,11 @@ var express = require('express');
 var router = express.Router();
 var logger = require('../logs/log4js').logger;
 
-/* GET home page. */
+/* token verify */
 router.get('/', function(req, res, next) {
-	res.render('index', { title: 'Express' });
+	logger.info(req.query);
+	res.end();
 });
 
+//
 module.exports = router;
