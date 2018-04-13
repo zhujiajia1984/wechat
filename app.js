@@ -23,9 +23,14 @@ app.set('view engine', 'ejs');
 // app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 // app.use(logger('dev'));
 app.use(log4js.connectLogger(logger, { level: 'auto' }));
+//
+app.use(bodyParser.text({ type: 'text/xml' })); // 将请求体中的xml解析为字符串
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+//
 app.use(cookieParser());
+
+//
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', index);
