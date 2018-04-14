@@ -11,6 +11,7 @@ var logger = require('./logs/log4js').logger;
 var index = require('./routes/index');
 var users = require('./routes/users');
 var wxTokenVerify = require('./routes/wxTokenVerify');
+var wxMenu = require('./routes/wxMenu');
 
 //
 var app = express();
@@ -36,6 +37,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', index);
 app.use('/users', users);
 app.use('/wxTokenVerify', wxTokenVerify);
+app.use('/wxMenu', wxMenu);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
