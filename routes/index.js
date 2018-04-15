@@ -229,14 +229,30 @@ function sendKfMsg(data) {
 			// logger.info("token:", access_token);
 			// logger.info("openid:", openId);
 			let textMsg = {
-				"touser": openId,
-				"msgtype": "text",
-				"text": {
+				touser: openId,
+				msgtype: "text",
+				text: {
 					"content": `欢迎使用以下服务：
 					1：小程序<a href="http://www.qq.com" data-miniprogram-appid="wx65423a2f6908bc55" data-miniprogram-path="pages/index/index">Hi游</a>`
 				}
 			}
-			const postData = JSON.stringify(textMsg);
+			let imageMsg = {
+				touser: openId,
+				msgtype: "image",
+				image: {
+					media_id: "XSR7YDLHtgUkg-6NmG5mlmVnqW0j2ncL6iw4_Rtl1X0"
+				}
+			}
+			let newsMsg = {
+				touser: openId,
+				msgtype: "mpnews",
+				mpnews: {
+					media_id: "XSR7YDLHtgUkg-6NmG5mlhmJ49JiITdHOFtsXahVlZQ"
+				}
+			}
+			// const postData = JSON.stringify(textMsg);
+			// const postData = JSON.stringify(imageMsg);
+			const postData = JSON.stringify(newsMsg);
 			const options = {
 				hostname: "api.weixin.qq.com",
 				path: `/cgi-bin/message/custom/send?access_token=${access_token}`,

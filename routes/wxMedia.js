@@ -9,7 +9,7 @@ var logger = require('../logs/log4js').logger;
 var redisClient = require('../redis');
 var https = require('https');
 var searchJson = {
-	type: "image",
+	type: "news",
 	offset: 0,
 	count: 20
 }
