@@ -227,7 +227,7 @@ function sendKfMsg(data) {
 			access_token = access_token.replace(/\"/g, "");
 			let openId = data.FromUserName;
 			// logger.info("token:", access_token);
-			logger.info("openid:", openId);
+			// logger.info("openid:", openId);
 			let textMsg = {
 				touser: openId,
 				msgtype: "text",
