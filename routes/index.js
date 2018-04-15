@@ -62,7 +62,11 @@ router.post('/', function(req, res, next) {
 					replyXml = replyPositionBuild(data);
 				} else if (data.Event == "CLICK") {
 					// 自定义菜单拉取消息事件
-					// replyXml = replyPositionBuild(data);
+					if (data.EventKey == "cmxdd") {
+						replyXml = sendKfMsg(data);
+					} else {
+						return "";
+					}
 				} else if (data.Event == "VIEW") {
 					// 自定义菜单跳转外链事件
 					// replyXml = replyPositionBuild(data);
@@ -154,7 +158,6 @@ function saveImageBuild(data) {
 				return reject(e);
 			});
 		});
-
 	})
 }
 
@@ -211,6 +214,53 @@ function replyPositionBuild(data) {
 		'<Content><![CDATA[' + content + ']]></Content>' +
 		'</xml>';
 	return resMsg;
+}
+
+////////////////////////////////////////////////////////////////
+// 发送客服消息（点击自定义菜单后）
+function sendKfMsg(data) {
+	return new Promise((resolve, reject) => {
+		//获取access_token
+		redisClient.get('token', (err, access_token) => {
+			if (err) return reject(err);
+			// post发送客服消息
+			access_token = access_token.replace(/\"/g, "");
+			let openId = data.FromUserName;
+			logger.info("token:", access_token);
+			logger.info("openid:", openId);
+			const postData = JSON.stringify({
+				"touser": openId,
+				"msgtype": "text",
+				"text": {
+					"content": "Hello World"
+				}
+			});
+			const options = {
+				hostname: "api.weixin.qq.com",
+				path: `/cgi-bin/message/custom/send?access_token=${access_token}`,
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+					'Content-Length': Buffer.byteLength(postData, 'utf-8')
+				}
+			};
+			const req = https.request(options, (res) => {
+				res.setEncoding('utf8');
+				let rawData = '';
+				res.on('data', (chunk) => { rawData += chunk; });
+				res.on('end', () => {
+					// 反馈结果
+					logger.info("rawData:", rawData);
+					resolve(JSON.parse(rawData));
+				});
+			});
+			req.on('error', (e) => {
+				reject(`problem with request: ${e.message}`);
+			});
+			req.write(postData);
+			req.end();
+		});
+	})
 }
 
 module.exports = router;
