@@ -63,7 +63,8 @@ router.post('/', function(req, res, next) {
 				} else if (data.Event == "CLICK") {
 					// 自定义菜单拉取消息事件
 					if (data.EventKey == "cmxdd") {
-						replyXml = sendKfMsg(data);
+						replyXml = "success";
+						sendKfMsg(data);
 					} else {
 						return "";
 					}
