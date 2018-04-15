@@ -12,6 +12,7 @@ var index = require('./routes/index');
 var users = require('./routes/users');
 var wxTokenVerify = require('./routes/wxTokenVerify');
 var wxMenu = require('./routes/wxMenu');
+var wxMedia = require('./routes/wxMedia');
 
 //
 var app = express();
@@ -38,6 +39,7 @@ app.use('/', index);
 app.use('/users', users);
 app.use('/wxTokenVerify', wxTokenVerify);
 app.use('/wxMenu', wxMenu);
+app.use('/wxMedia', wxMedia);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

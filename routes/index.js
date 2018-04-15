@@ -226,15 +226,17 @@ function sendKfMsg(data) {
 			// post发送客服消息
 			access_token = access_token.replace(/\"/g, "");
 			let openId = data.FromUserName;
-			logger.info("token:", access_token);
-			logger.info("openid:", openId);
-			const postData = JSON.stringify({
+			// logger.info("token:", access_token);
+			// logger.info("openid:", openId);
+			let textMsg = {
 				"touser": openId,
 				"msgtype": "text",
 				"text": {
-					"content": "Hello World"
+					"content": `欢迎使用以下服务：
+					1：小程序<a href="http://www.qq.com" data-miniprogram-appid="wx65423a2f6908bc55" data-miniprogram-path="pages/index/index">Hi游</a>`
 				}
-			});
+			}
+			const postData = JSON.stringify(textMsg);
 			const options = {
 				hostname: "api.weixin.qq.com",
 				path: `/cgi-bin/message/custom/send?access_token=${access_token}`,
@@ -250,8 +252,13 @@ function sendKfMsg(data) {
 				res.on('data', (chunk) => { rawData += chunk; });
 				res.on('end', () => {
 					// 反馈结果
-					logger.info("rawData:", rawData);
-					resolve(JSON.parse(rawData));
+					let result = JSON.parse(rawData);
+					if (result.errcode == 0) {
+						// 发送成功
+						resolve("success");
+					} else {
+						reject(result);
+					}
 				});
 			});
 			req.on('error', (e) => {
