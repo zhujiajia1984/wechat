@@ -250,9 +250,20 @@ function sendKfMsg(data) {
 					media_id: "XSR7YDLHtgUkg-6NmG5mlhmJ49JiITdHOFtsXahVlZQ"
 				}
 			}
+			let minipgMsg = {
+				touser: openId,
+				msgtype: "miniprogrampage",
+				miniprogrampage: {
+					title: "Hi游+",
+					appid: "wxce49574d3d0dad43",
+					pagepath: "pages/index/index",
+					thumb_media_id: "XSR7YDLHtgUkg-6NmG5mlmVnqW0j2ncL6iw4_Rtl1X0"
+				}
+			}
 			// const postData = JSON.stringify(textMsg);
 			// const postData = JSON.stringify(imageMsg);
 			const postData = JSON.stringify(newsMsg);
+			// const postData = JSON.stringify(minipgMsg);
 			const options = {
 				hostname: "api.weixin.qq.com",
 				path: `/cgi-bin/message/custom/send?access_token=${access_token}`,
