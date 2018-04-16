@@ -9,7 +9,6 @@ var logger = require('./logs/log4js').logger;
 
 //
 var index = require('./routes/index');
-var users = require('./routes/users');
 var wxTokenVerify = require('./routes/wxTokenVerify');
 var wxMenu = require('./routes/wxMenu');
 var wxMedia = require('./routes/wxMedia');
@@ -37,7 +36,6 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', index);
-app.use('/users', users);
 app.use('/wxTokenVerify', wxTokenVerify);
 app.use('/wxMenu', wxMenu);
 app.use('/wxMedia', wxMedia);

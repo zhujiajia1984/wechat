@@ -1,7 +1,7 @@
 /*
 	微信公众号自定义菜单配置
-	创建菜单：post http://wechat.weiquaninfo.cn/wxMenu
-	删除菜单：delete http://wechat.weiquaninfo.cn/wxMenu
+	创建菜单：post https://wechat.weiquaninfo.cn/wxMenu
+	删除菜单：delete https://wechat.weiquaninfo.cn/wxMenu
 */
 
 var express = require('express');

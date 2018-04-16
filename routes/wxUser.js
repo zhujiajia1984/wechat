@@ -1,7 +1,7 @@
 /*
 	微信公众号用户管理
-	获取用户基本信息：get http://wechat.weiquaninfo.cn/wxUser/getUserInfo
-	获取关注用户列表：get http://wechat.weiquaninfo.cn/wxUser/getUserList
+	获取用户基本信息：get https://wechat.weiquaninfo.cn/wxUser/getUserInfo
+	获取关注用户列表：get https://wechat.weiquaninfo.cn/wxUser/getUserList
 */
 
 var express = require('express');

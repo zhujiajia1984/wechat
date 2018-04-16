@@ -1,6 +1,6 @@
 /*
 	微信公众号服务器配置
-	http://wechat.weiquaninfo.cn/wxTokenVerify
+	https://wechat.weiquaninfo.cn/wxTokenVerify
 	token: zhujiajia1984
 */
 

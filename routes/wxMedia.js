@@ -1,6 +1,6 @@
 /*
 	微信公众号素材管理
-	获取素材列表：get http://wechat.weiquaninfo.cn/wxMedia/getMediaList
+	获取素材列表：get https://wechat.weiquaninfo.cn/wxMedia/getMediaList
 */
 
 var express = require('express');

@@ -1,6 +1,6 @@
 /*
 	微信公众号推送客服消息
-	推送客服消息：post http://wechat.weiquaninfo.cn/wxKfMsg/sendMsg
+	推送客服消息：post https://wechat.weiquaninfo.cn/wxKfMsg/sendMsg
 	每次最多20条消息，可以结合模板消息进行再次提醒
 */
 
