@@ -29,6 +29,10 @@ const payNotifyUrl = "https://wechat.weiquaninfo.cn/wxPay/payResult"; // 支付�
 const time = 7200; // prepareId有效期2小时
 const openId = "osbYM0QcwWOo4K61UKwztoZjPzAs"; // 用户openid
 
+// mongodb
+const url = 'mongodb://mongodb_mongodb_1:27017';
+const Order = require('./wxMongoAPI/wxPayOrder/wxPayOrder');
+
 //////////////////////////////////////////////////////////////////////////
 // 小程序调用统一下单接口
 router.post('/unifiedorder', function(req, res, next) {
@@ -98,6 +102,8 @@ router.post('/payResult', function(req, res, next) {
 	}).then((data) => {
 		// step3：验证数据
 		return checkPayData(data);
+	}).then((data) => {
+		return saveOrderToMongo(data);
 	}).then((result) => {
 		let successMsg = "<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>";
 		res.send(successMsg);
@@ -111,14 +117,53 @@ router.post('/payResult', function(req, res, next) {
 
 //functions
 //////////////////////////////////////////////////////////////////////////
-// 校验数据是否正确
-function checkPayData(result, orderInfo) {
+// 保存订单信息和支付结果信息到mongo数据库
+function saveOrderToMongo(data) {
 	return new Promise((resolve, reject) => {
+		// 提取数据
+		let saveData = {
+			out_trade_no: data.orderInfo.out_trade_no, //商户订单号
+			openid: data.orderInfo.openid, // 用户openid
+			body: data.orderInfo.body, // 商品描述
+			total_fee: data.orderInfo.total_fee, // 订单金额
+			payResult: { //支付结果
+				result: "success", //支付成功
+				bank_type: data.payResult.bank_type, // 支付银行
+				transaction_id: data.payResult.transaction_id, // 微信支付订单号
+				time_end: data.payResult.time_end, // 支付完成时间
+			}
+		}
 
+		// 保存
+		let order = new Order(url);
+		order.addOrder(saveData).then((result) => {
+			resolve(data);
+		}).catch((error) => {
+			reject(error);
+		})
 	})
 }
 
-
+//////////////////////////////////////////////////////////////////////////
+// 校验数据是否正确
+function checkPayData(data) {
+	return new Promise((resolve, reject) => {
+		// 根据商户订单号获取信息，判断是否已经处理过数据
+		redisClient.get(data.out_trade_no, (error, result) => {
+			if (error) return reject(error);
+			result = JSON.parse(result);
+			// 校验是否已经处理过此数据
+			if (typeof(result.isMongoSaved) != "undefined") return reject("order mongo saved!");
+			// 校验订单金额是否和商户侧一致
+			if (data.total_fee != result.total_fee) return reject("total_fee error!");
+			let return_data = {
+				orderInfo: result, // 订单信息
+				payResult: data // 支付结果信息
+			}
+			return resolve(return_data);
+		})
+	})
+}
 
 //////////////////////////////////////////////////////////////////////////
 // 临时保存统一下单信息到redis，key为商户订单号
