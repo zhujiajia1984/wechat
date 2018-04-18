@@ -15,6 +15,7 @@ var wxMedia = require('./routes/wxMedia');
 var wxKfMsg = require('./routes/wxKfMsg');
 var wxUser = require('./routes/wxUser');
 var wxPay = require('./routes/wxPay');
+var wxAppLogin = require('./routes/wxAppLogin');
 //
 var app = express();
 
@@ -46,6 +47,7 @@ app.use('/wxMedia', wxMedia);
 app.use('/wxKfMsg', wxKfMsg);
 app.use('/wxUser', wxUser);
 app.use('/wxPay', wxPay);
+app.use('/wxAppLogin', wxAppLogin);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

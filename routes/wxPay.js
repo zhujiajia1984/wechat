@@ -42,11 +42,12 @@ router.post('/unifiedorder', function(req, res, next) {
 		return;
 	}
 	var body = req.body.body;
+	var clientIP = req.ip;
 	var orderInfo = {}; // 订单信息
 	// step1: 获取32位随机字符串
 	getNonceStr().then((nonce_str) => {
 		// step2：生成签名
-		return createSign(nonce_str, body);
+		return createSign(nonce_str, body, clientIP);
 	}).then((data) => {
 		// step3：调用统一下单接口
 		orderInfo = data.rawData;
@@ -133,8 +134,7 @@ function saveOrderToMongo(data) {
 				time_end: data.payResult.time_end, // 支付完成时间
 			}
 		}
-
-		// 保存
+		// 保存到数据库
 		let order = new Order(url);
 		order.addOrder(saveData).then((result) => {
 			resolve(data);
@@ -250,7 +250,6 @@ function checkPayResultSign(data) {
 
 }
 
-
 ////////////////////////////////////////////////////////////////
 // 解析微信发来的消息xml
 function parseWxString(xml) {
@@ -282,7 +281,7 @@ function getNonceStr() {
 
 //////////////////////////////////////////////////////////////////////////
 // 生成签名
-function createSign(nonce_str, body) {
+function createSign(nonce_str, body, clientIP) {
 	return new Promise((resolve, reject) => {
 		// 参数名称定义
 		let [key_appid,
@@ -302,7 +301,7 @@ function createSign(nonce_str, body) {
 		// 商户订单号（openid前10位+时间戳（秒），确保唯一性）
 		rawData[key_out_trade_no] = `${openId.slice(0, 10)}_${moment().unix()}`;
 		rawData[key_total_fee] = 1;
-		rawData[key_spbill_create_ip] = "123.12.12.123";
+		rawData[key_spbill_create_ip] = `${clientIP}`;
 		rawData[key_notify_url] = payNotifyUrl;
 		rawData[key_trade_type] = "JSAPI";
 		rawData[key_openid] = openId;
