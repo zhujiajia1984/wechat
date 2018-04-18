@@ -18,6 +18,9 @@ var wxPay = require('./routes/wxPay');
 //
 var app = express();
 
+// Express behind proxies
+app.set('trust proxy', 'loopback, 172.18.0.1');
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
