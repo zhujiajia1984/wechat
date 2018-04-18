@@ -27,6 +27,7 @@ const api_key = 'PuWVF2GX4sHKSRNK7Wl1V4gNBvY3E5f1'; // 商户API密钥
 const device_info = "WEB"; // 设备号
 const payNotifyUrl = "https://wechat.weiquaninfo.cn/wxPay/payResult"; // 支付结果通知
 const time = 7200; // prepareId有效期2小时
+const openId = "osbYM0QcwWOo4K61UKwztoZjPzAs"; // 用户openid
 
 //////////////////////////////////////////////////////////////////////////
 // 小程序调用统一下单接口
@@ -94,6 +95,9 @@ router.post('/payResult', function(req, res, next) {
 	parseWxString(req.body).then((data) => {
 		// step2：校验sign
 		return checkPayResultSign(data);
+	}).then((data) => {
+		// step3：验证数据
+		return checkPayData(data);
 	}).then((result) => {
 		let successMsg = "<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>";
 		res.send(successMsg);
@@ -107,19 +111,26 @@ router.post('/payResult', function(req, res, next) {
 
 //functions
 //////////////////////////////////////////////////////////////////////////
+// 校验数据是否正确
+function checkPayData(result, orderInfo) {
+	return new Promise((resolve, reject) => {
+
+	})
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////
 // 临时保存统一下单信息到redis，key为商户订单号
 function saveRedis(result, orderInfo) {
 	return new Promise((resolve, reject) => {
-		redisClient.select(1, (err) => {
-			if (err) return reject(err);
-		});
 		redisClient.set(orderInfo.out_trade_no,
 			JSON.stringify(orderInfo),
 			'Ex', time,
 			(err, res) => {
 				if (err) return reject("save redis error");
 				return resolve(result);
-			})
+			});
 	})
 }
 
@@ -243,12 +254,13 @@ function createSign(nonce_str, body) {
 		rawData[key_device_info] = device_info;
 		rawData[key_body] = body;
 		rawData[key_nonce_str] = nonce_str;
-		rawData[key_out_trade_no] = `${moment().valueOf()}`;
+		// 商户订单号（openid前10位+时间戳（秒），确保唯一性）
+		rawData[key_out_trade_no] = `${openId.slice(0, 10)}_${moment().unix()}`;
 		rawData[key_total_fee] = 1;
 		rawData[key_spbill_create_ip] = "123.12.12.123";
 		rawData[key_notify_url] = payNotifyUrl;
 		rawData[key_trade_type] = "JSAPI";
-		rawData[key_openid] = "osbYM0QcwWOo4K61UKwztoZjPzAs";
+		rawData[key_openid] = openId;
 		// 参数名ASCII字典序排序,按照key=value格式
 		let tmp = [key_appid,
 			key_mch_id, key_device_info, key_body, key_nonce_str,
