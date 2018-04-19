@@ -35,4 +35,15 @@ module.exports = class User {
         client.close();
         return result;
     }
+    // 查询用户（通过_id和lastModified）
+    async findUser(data) {
+        const client = await MongoClient.connect(this.url);
+        const db = client.db("test");
+        let result = await db.collection('wxAppUser').findOne({
+            _id: new ObjectID(data._id),
+            lastModified: data.lastModified
+        }, { projection: { openid: 1, unionid: 1 } });
+        client.close();
+        return result;
+    }
 }

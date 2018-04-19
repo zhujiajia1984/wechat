@@ -19,6 +19,7 @@ var childProc = require('child_process');
 var crypto = require('crypto');
 var moment = require('moment');
 var parseString = require('xml2js').parseString;
+var jwt = require('jsonwebtoken');
 
 // const
 const appid = 'wxc7b32c9521bcc0d5'; // 智企云服务+小程序
@@ -27,11 +28,14 @@ const api_key = 'PuWVF2GX4sHKSRNK7Wl1V4gNBvY3E5f1'; // 商户API密钥
 const device_info = "WEB"; // 设备号
 const payNotifyUrl = "https://wechat.weiquaninfo.cn/wxPay/payResult"; // 支付结果通知
 const time = 7200; // prepareId有效期2小时
-const openId = "osbYM0QcwWOo4K61UKwztoZjPzAs"; // 用户openid
+// const openId = "osbYM0QcwWOo4K61UKwztoZjPzAs"; // 用户openid
+const jwt_secret = "201701200315zxtZJJgm135152"; // jwt secret
+const jwt_header = { issuer: 'zjj', subject: 'wxApp' }; // jwt header
 
 // mongodb
 const url = 'mongodb://mongodb_mongodb_1:27017';
 const Order = require('./wxMongoAPI/wxPayOrder/wxPayOrder');
+const User = require('./wxMongoAPI/wxAppLoginUser/wxAppUser');
 
 //////////////////////////////////////////////////////////////////////////
 // 小程序调用统一下单接口
@@ -41,22 +45,33 @@ router.post('/unifiedorder', function(req, res, next) {
 		res.status(417).send("need body");
 		return;
 	}
+	let token = req.headers['authorization'];
+	if (typeof(token) == "undefined") {
+		logger.error("need token");
+		res.status(417).send("need token");
+		return;
+	}
 	var body = req.body.body;
 	var clientIP = req.ip;
 	var orderInfo = {}; // 订单信息
-	// step1: 获取32位随机字符串
-	getNonceStr().then((nonce_str) => {
-		// step2：生成签名
-		return createSign(nonce_str, body, clientIP);
+	var userInfo = {}; // openid, unionid
+	// step1：获取用户信息(openid, unionid)
+	getUserInfo(token).then((info) => {
+		// step2: 获取32位随机字符串
+		userInfo = info;
+		return getNonceStr();
+	}).then((nonce_str) => {
+		// step3：生成签名
+		return createSign(nonce_str, body, clientIP, userInfo);
 	}).then((data) => {
-		// step3：调用统一下单接口
+		// step4：调用统一下单接口
 		orderInfo = data.rawData;
 		return callWxUnifiedorder(data);
 	}).then((rawData) => {
-		// step4：解析返回的xml值
+		// step5：解析返回的xml值
 		return parseWxString(rawData);
 	}).then((result) => {
-		// step5：保存到redis（prepay_id时效为2小时）
+		// step6：保存到redis（prepay_id时效为2小时）
 		return saveRedis(result, orderInfo);
 	}).then((result) => {
 		if (result.return_code == 'SUCCESS' && result.result_code == 'SUCCESS') {
@@ -117,6 +132,30 @@ router.post('/payResult', function(req, res, next) {
 
 
 //functions
+//////////////////////////////////////////////////////////////////////////
+// 获取用户openid, unionid
+function getUserInfo(token) {
+	// token解密并获取openid, unionid
+	return new Promise((resolve, reject) => {
+		jwt.verify(token, jwt_secret, jwt_header, (err, decoded) => {
+			if (err) return reject(err);
+			// 数据库查询
+			let user_data = {
+				_id: decoded.id,
+				lastModified: decoded.lastModified
+			};
+			// 数据库查询
+			let user = new User(url);
+			user.findUser(user_data).then((result) => {
+				if (result) return resolve(result);
+				return reject({ errMsg: "token not correct" });
+			}).catch((error) => {
+				reject(error);
+			})
+		});
+	})
+}
+
 //////////////////////////////////////////////////////////////////////////
 // 保存订单信息和支付结果信息到mongo数据库
 function saveOrderToMongo(data) {
@@ -281,36 +320,33 @@ function getNonceStr() {
 
 //////////////////////////////////////////////////////////////////////////
 // 生成签名
-function createSign(nonce_str, body, clientIP) {
+function createSign(nonce_str, body, clientIP, userInfo) {
 	return new Promise((resolve, reject) => {
 		// 参数名称定义
-		let [key_appid,
-			key_mch_id, key_device_info, key_body, key_nonce_str,
-			key_out_trade_no, key_total_fee, key_spbill_create_ip, key_notify_url,
-			key_trade_type, key_openid
-		] = ["appid", "mch_id", "device_info", "body", "nonce_str", "out_trade_no",
-			"total_fee", "spbill_create_ip", "notify_url", "trade_type", "openid"
+		let tmpKeys = ["appid", "mch_id", "device_info", "body", "nonce_str",
+			"out_trade_no", "total_fee", "spbill_create_ip", "notify_url", "trade_type",
+			"openid"
 		];
 		// 参数值定义
 		let rawData = {};
-		rawData[key_appid] = appid;
-		rawData[key_mch_id] = mch_id;
-		rawData[key_device_info] = device_info;
-		rawData[key_body] = body;
-		rawData[key_nonce_str] = nonce_str;
+		rawData.appid = appid;
+		rawData.mch_id = mch_id;
+		rawData.device_info = device_info;
+		rawData.body = body;
+		rawData.nonce_str = nonce_str;
 		// 商户订单号（openid前10位+时间戳（秒），确保唯一性）
-		rawData[key_out_trade_no] = `${openId.slice(0, 10)}_${moment().unix()}`;
-		rawData[key_total_fee] = 1;
-		rawData[key_spbill_create_ip] = `${clientIP}`;
-		rawData[key_notify_url] = payNotifyUrl;
-		rawData[key_trade_type] = "JSAPI";
-		rawData[key_openid] = openId;
-		// 参数名ASCII字典序排序,按照key=value格式
-		let tmp = [key_appid,
-			key_mch_id, key_device_info, key_body, key_nonce_str,
-			key_out_trade_no, key_total_fee, key_spbill_create_ip, key_notify_url,
-			key_trade_type, key_openid
-		].sort().map((item) => {
+		rawData.out_trade_no = `${userInfo.openid.slice(0, 10)}_${moment().unix()}`;
+		rawData.total_fee = 1;
+		rawData.spbill_create_ip = `${clientIP}`;
+		rawData.notify_url = payNotifyUrl;
+		rawData.trade_type = "JSAPI";
+		rawData.openid = userInfo.openid;
+		if (typeof(userInfo.unionid) != "undefined" && userInfo.unionid != "") {
+			tmpKeys.push("attach");
+			rawData.attach = userInfo.unionid;
+		}
+		// sign
+		let tmp = tmpKeys.sort().map((item) => {
 			return `${item}=${rawData[item]}`
 		}).join("&");
 		let signTmp = `${tmp}&key=${api_key}`;
@@ -340,8 +376,11 @@ function callWxUnifiedorder(data) {
 			'<spbill_create_ip>' + data.rawData.spbill_create_ip + '</spbill_create_ip>' +
 			'<notify_url>' + data.rawData.notify_url + '</notify_url>' +
 			'<trade_type>' + data.rawData.trade_type + '</trade_type>' +
-			'<openid>' + data.rawData.openid + '</openid>' +
-			'</xml>';
+			'<openid>' + data.rawData.openid + '</openid>';
+		if (typeof(data.rawData.attach) != "undefined" && data.rawData.attach != "") {
+			postData = postData + `<attach>${data.rawData.attach}</attach>`;
+		}
+		postData = postData + '</xml>';
 		const options = {
 			hostname: "api.mch.weixin.qq.com",
 			path: "/pay/unifiedorder",
