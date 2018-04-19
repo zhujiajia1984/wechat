@@ -2,6 +2,7 @@
 const MongoClient = require('mongodb').MongoClient;
 const ObjectID = require('mongodb').ObjectID;
 var assert = require('assert');
+var moment = require('moment');
 
 // 微信小程序用户登录信息管理
 module.exports = class User {
@@ -13,24 +14,23 @@ module.exports = class User {
     async updateUser(data) {
         const client = await MongoClient.connect(this.url);
         const db = client.db("test");
-        let curDate = new Date();
-        let result = await db.collection('wxAppUser').updateOne({ openid: data.openid }, {
+        let curTimeStamp = moment().unix();
+        let result = await db.collection('wxAppUser').findOneAndUpdate({ openid: data.openid }, {
             $set: {
                 session_key: data.session_key,
-                unionid: typeof(data.unionid) == "undefined" ? "" : data.unionid
+                unionid: typeof(data.unionid) == "undefined" ? "" : data.unionid,
+                lastModified: curTimeStamp
             }
-        }, { upsert: true });
-        if (result.upsertedCount == 1) { // 新增
-            result = {
-                _id: result.upsertedId._id,
-                type: "insert"
-            }
-        } else { // 更新
-            assert.equal(1, result.matchedCount);
-            assert.equal(1, result.modifiedCount);
-            result = {
-                type: "update"
-            }
+        }, {
+            upsert: true,
+            projection: { _id: 1, lastModified: 1 },
+            returnOriginal: false
+        });
+        assert.equal(1, result.ok);
+        assert.equal(1, result.lastErrorObject.n);
+        result = {
+            id: result.value._id,
+            lastModified: result.value.lastModified,
         }
         client.close();
         return result;

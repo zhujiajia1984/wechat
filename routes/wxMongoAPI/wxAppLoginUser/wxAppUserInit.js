@@ -8,7 +8,7 @@ printjson(db.wxAppUser.drop());
 db.createCollection("wxAppUser", {
     validator: {
         $jsonSchema: {
-            required: ["openid", "session_key", "unionid"],
+            required: ["openid", "session_key", "unionid", "lastModified"],
             properties: {
                 openid: {
                     bsonType: "string",
@@ -18,6 +18,9 @@ db.createCollection("wxAppUser", {
                 },
                 unionid: {
                     bsonType: "string",
+                },
+                lastModified: {
+                    bsonType: "int",
                 },
             }
         }
@@ -39,6 +42,10 @@ db.runCommand({
         }, {
             key: { unionid: 1 },
             name: 'unionid_index',
+            background: true
+        }, {
+            key: { lastModified: 1 },
+            name: 'lastModified_index',
             background: true
         }
     ]
