@@ -1,6 +1,8 @@
 /*
 	微信小程序登录
 	登录：post https://wechat.weiquaninfo.cn/wxAppLogin/token
+	校验token：https://wechat.weiquaninfo.cn/wxAppLogin/verityToken
+	{headers:{Authorization}}
 */
 
 var express = require('express');
@@ -13,6 +15,7 @@ var jwt = require('jsonwebtoken');
 const appId = "wxc7b32c9521bcc0d5"; // 小程序appid
 const appSecret = "470393669b0d477adcab09b0aa5a88d6"; // 小程序appsecret
 const jwt_secret = "201701200315zxtZJJgm135152"; // jwt secret
+const jwt_header = { issuer: 'zjj', subject: 'wxApp' }; // jwt header
 
 // mongodb
 const url = 'mongodb://mongodb_mongodb_1:27017';
@@ -32,13 +35,26 @@ router.post('/token', function(req, res, next) {
 		return saveUserInfo(result);
 	}).then((data) => {
 		return createJwtToken(data);
-	}).then((result) => {
-		logger.info(result);
-		res.status(200).send(result);
+	}).then((token) => {
+		res.status(200).json({
+			token: token,
+			result_msg: "success"
+		});
 	}).catch((error) => {
 		logger.error(error);
 		res.status(417).send(error);
 	})
+});
+
+//////////////////////////////////////////////////////////////////////////
+// 校验小程序token是否正确
+router.all('/verityToken', function(req, res, next) {
+	let token = req.headers['authorization'];
+	jwt.verify(token, jwt_secret, jwt_header, (err, decoded) => {
+		if (err) return res.status(417).send(err);
+		logger.info(decoded);
+		res.send(decoded);
+	});
 });
 
 // function
@@ -46,13 +62,11 @@ router.post('/token', function(req, res, next) {
 // 生成jwt token（使用id和time）
 function createJwtToken(data) {
 	return new Promise((resolve, reject) => {
-		jwt.sign({ id: data.id, lastModified: data.lastModified }, jwt_secret, {
-			issuer: 'zjj',
-			subject: 'wxApp'
-		}, (err, token) => {
-			if (err) return reject(err);
-			resolve(token);
-		});
+		jwt.sign({ id: data.id, lastModified: data.lastModified },
+			jwt_secret, jwt_header, (err, token) => {
+				if (err) return reject(err);
+				resolve(token);
+			});
 	})
 }
 
