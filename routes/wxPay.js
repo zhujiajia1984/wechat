@@ -164,6 +164,7 @@ function saveOrderToMongo(data) {
 		let saveData = {
 			out_trade_no: data.orderInfo.out_trade_no, //商户订单号
 			openid: data.orderInfo.openid, // 用户openid
+			unionid: typeof(data.orderInfo.attach) == "undefined" ? "" : data.orderInfo.attach, // 用户unionid
 			body: data.orderInfo.body, // 商品描述
 			total_fee: data.orderInfo.total_fee, // 订单金额
 			payResult: { //支付结果

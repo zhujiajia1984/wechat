@@ -17,6 +17,7 @@ module.exports = class Order {
         let result = await db.collection('order').insertOne({
             out_trade_no: data.out_trade_no,
             openid: data.openid,
+            unionid: data.unionid,
             body: data.body,
             total_fee: data.total_fee,
             payResult: data.payResult
