@@ -11,7 +11,7 @@ log4js.configure({
 		},
 		log_date: {
 			type: 'dateFile',
-			filename: '/var/lib/docker/volumes/wechat_code/_data/logs/dateLog',
+			filename: '/home/node/wechat/logs/log_date/dateLog',
 			alwaysIncludePattern: true,
 			pattern: "-yyyy-MM-dd.log",
 			keepFileExt: true,
