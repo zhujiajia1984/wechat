@@ -42,7 +42,7 @@ module.exports = class User {
         let result = await db.collection('wxAppUser').findOne({
             _id: new ObjectID(data._id),
             lastModified: data.lastModified
-        }, { projection: { openid: 1, unionid: 1 } });
+        });
         client.close();
         return result;
     }

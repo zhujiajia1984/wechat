@@ -1,6 +1,7 @@
 /*
 	微信小程序登录
 	登录：post https://wechat.weiquaninfo.cn/wxAppLogin/token
+	获取用户信息：post https://wechat.weiquaninfo.cn/wxAppLogin/userInfo
 	校验token：https://wechat.weiquaninfo.cn/wxAppLogin/verityToken
 	{headers:{Authorization}}
 */
@@ -10,6 +11,7 @@ var router = express.Router();
 var logger = require('../logs/log4js').logger;
 var https = require('https');
 var jwt = require('jsonwebtoken');
+var crypto = require('crypto');
 
 // const
 const appId = "wxc7b32c9521bcc0d5"; // 小程序appid
@@ -47,6 +49,37 @@ router.post('/token', function(req, res, next) {
 });
 
 //////////////////////////////////////////////////////////////////////////
+// 小程序获取用户信息接口
+router.post('/userInfo', function(req, res, next) {
+	let { rawData, signature, encryptedData, iv } = req.body;
+	let token = req.headers['authorization'];
+	if (typeof(rawData) == "undefined" || typeof(signature) == "undefined" ||
+		typeof(encryptedData) == "undefined" || typeof(iv) == "undefined" ||
+		typeof(token) == "undefined"
+	) {
+		logger.error("param error");
+		res.status(417).send("param error!");
+		return;
+	}
+	let data = {
+		rawData: rawData,
+		signature: signature,
+		encryptedData: encryptedData,
+		iv: iv
+	}
+	// 业务处理
+	getUserInfo(token, data).then((info) => {
+		// 校验数据完整性
+		return checkData(info);
+	}).then((data) => {
+		res.status(200).json({ result_msg: "success" });
+	}).catch((error) => {
+		logger.error(error);
+		res.status(417).send(error);
+	})
+});
+
+//////////////////////////////////////////////////////////////////////////
 // 校验小程序token是否正确
 router.all('/verityToken', function(req, res, next) {
 	let token = req.headers['authorization'];
@@ -58,6 +91,49 @@ router.all('/verityToken', function(req, res, next) {
 });
 
 // function
+//////////////////////////////////////////////////////////////////////////
+// 校验用户数据完整性
+function checkData(info) {
+	return new Promise((resolve, reject) => {
+		let tmp = info.rawData + info.session_key;
+		let sign = crypto.createHash("sha1").update(tmp).digest("hex");
+		if (sign == info.signature) {
+			resolve(info);
+		} else {
+			reject("data sign error");
+		}
+	})
+}
+
+//////////////////////////////////////////////////////////////////////////
+// 获取用户openid, unionid, session_key
+function getUserInfo(token, data) {
+	// token解密并获取openid, unionid
+	return new Promise((resolve, reject) => {
+		jwt.verify(token, jwt_secret, jwt_header, (err, decoded) => {
+			if (err) return reject(err);
+			// 数据库查询
+			let user_data = {
+				_id: decoded.id,
+				lastModified: decoded.lastModified
+			};
+			// 数据库查询
+			let user = new User(url);
+			user.findUser(user_data).then((result) => {
+				if (result) {
+					data.session_key = result.session_key;
+					data.openid = result.openid;
+					data.unionid = result.unionid;
+					return resolve(data);
+				}
+				return reject({ errMsg: "token not correct" });
+			}).catch((error) => {
+				reject(error);
+			})
+		});
+	})
+}
+
 //////////////////////////////////////////////////////////////////////////
 // 生成jwt token（使用id和time）
 function createJwtToken(data) {
