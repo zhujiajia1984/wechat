@@ -12,6 +12,7 @@ var logger = require('../logs/log4js').logger;
 var https = require('https');
 var jwt = require('jsonwebtoken');
 var crypto = require('crypto');
+var WXBizDataCrypt = require('../WXBizDataCrypt');
 
 // const
 const appId = "wxc7b32c9521bcc0d5"; // 小程序appid
@@ -71,8 +72,16 @@ router.post('/userInfo', function(req, res, next) {
 	getUserInfo(token, data).then((info) => {
 		// 校验数据完整性
 		return checkData(info);
-	}).then((data) => {
-		res.status(200).json({ result_msg: "success" });
+	}).then((info) => {
+		// 解密数据并保存到数据库
+		return cryptDataAndSave(info);
+	}).then((result) => {
+		if (result.n == 1 && result.ok == 1) {
+			res.status(200).json({ result_msg: "success" });
+		} else {
+			logger.error(error);
+			res.status(417).send(error);
+		}
 	}).catch((error) => {
 		logger.error(error);
 		res.status(417).send(error);
@@ -91,6 +100,26 @@ router.all('/verityToken', function(req, res, next) {
 });
 
 // function
+//////////////////////////////////////////////////////////////////////////
+// 解密数据并保存到数据库
+function cryptDataAndSave(info) {
+	return new Promise((resolve, reject) => {
+		let pc = new WXBizDataCrypt(appId, info.session_key);
+		let data = pc.decryptData(info.encryptedData, info.iv);
+		// 校验数据
+		if (data.watermark.appid != appId) return reject("data appid error");
+		// 保存到数据库
+		let user = new User(url);
+		user.updateUserInfo(data).then((result) => {
+			if (result.n == 1 && result.ok == 1) {}
+			resolve(result);
+		}).catch((error) => {
+			reject(error);
+		})
+
+	})
+}
+
 //////////////////////////////////////////////////////////////////////////
 // 校验用户数据完整性
 function checkData(info) {
@@ -117,7 +146,7 @@ function getUserInfo(token, data) {
 				_id: decoded.id,
 				lastModified: decoded.lastModified
 			};
-			// 数据库查询
+			// 数据库查询用户
 			let user = new User(url);
 			user.findUser(user_data).then((result) => {
 				if (result) {
@@ -126,7 +155,7 @@ function getUserInfo(token, data) {
 					data.unionid = result.unionid;
 					return resolve(data);
 				}
-				return reject({ errMsg: "token not correct" });
+				return reject({ errMsg: "user not find!" });
 			}).catch((error) => {
 				reject(error);
 			})

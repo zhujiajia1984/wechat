@@ -9,9 +9,16 @@ log4js.configure({
 			type: 'stdout',
 			layout: { type: 'colored' }
 		},
+		log_date: {
+			type: 'dateFile',
+			filename: '/var/lib/docker/volumes/wechat_code/_data/logs/dateLog',
+			alwaysIncludePattern: true,
+			pattern: "-yyyy-MM-dd.log",
+			keepFileExt: true,
+		},
 	},
 	categories: {
-		default: { appenders: ['out'], level: 'ALL' }, //默认
+		default: { appenders: ['out', 'log_date'], level: 'ALL' }, //默认
 	}
 })
 

@@ -46,4 +46,26 @@ module.exports = class User {
         client.close();
         return result;
     }
+    // 更新用户基本信息（无则创建，有则更新）
+    async updateUserInfo(data) {
+        const client = await MongoClient.connect(this.url);
+        const db = client.db("test");
+        let result = await db.collection('wxAppUser').updateOne({ openid: data.openId }, {
+            $set: {
+                "userInfo.nickName": data.nickName,
+                "userInfo.gender": data.gender,
+                "userInfo.city": data.city,
+                "userInfo.province": data.province,
+                "userInfo.country": data.country,
+                "userInfo.avatarUrl": data.avatarUrl,
+            }
+        });
+        // console.log("matchedCount:", result.matchedCount);
+        // console.log("modifiedCount:", result.modifiedCount);
+        assert.equal(1, result.matchedCount);
+        // assert.equal(1, result.modifiedCount);
+        result = result.result;
+        client.close();
+        return result;
+    }
 }
