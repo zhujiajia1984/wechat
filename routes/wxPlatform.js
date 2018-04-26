@@ -6,8 +6,10 @@
 
 var express = require('express');
 var router = express.Router();
+var path = require('path');
 var logger = require('../logs/log4js').logger;
 var parseString = require('xml2js').parseString;
+var exec = require('child_process').exec;
 
 // const
 const encodingAESKey = "qPcxoOmy62xVVzwSvp2OSVqg6UAzcHO1ORqg8PHVi8q";
@@ -39,7 +41,7 @@ router.post('/auth', function (req, res, next) {
         // step2：解密消息
         return DecryptMsg(data, xmlData, timestamp, nonce, msg_signature);
     }).then((msg)=>{
-        logger.info("msg", msg);
+        // logger.info("msg", msg);
         res.send("success");
     }).catch((error)=>{
         logger.error(error);
@@ -53,8 +55,12 @@ router.post('/auth', function (req, res, next) {
 function DecryptMsg(data, xmlData, timestamp, nonce, msg_sign) {
     return new Promise((resolve, reject) => {
         let appid = data.AppId;
-        logger.info("appid:", appid);
-        resolve();
+        let dir = path.resolve(__dirname, "../wxLibs/WxMsgCrypt");
+        let command = `python ${dir}/decryptMsg.py ${token} ${encodingAESKey} ${appid} ${xmlData} ${msg_sign} ${timestamp} ${nonce}`;
+        exec(command, (err, stdout, stderr)=>{
+            if(err) return reject(err);
+            return resolve(stdout);
+        })
     })
 }
 
