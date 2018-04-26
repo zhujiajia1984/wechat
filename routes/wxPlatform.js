@@ -10,6 +10,8 @@ var logger = require('../logs/log4js').logger;
 var parseString = require('xml2js').parseString;
 
 // const
+const encodingAESKey = "qPcxoOmy62xVVzwSvp2OSVqg6UAzcHO1ORqg8PHVi8q";
+const token = "wxPlatformZjj20180424";
 
 // router
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -25,7 +27,7 @@ router.post('/auth', function (req, res, next) {
         res.status(417).send("query need!");
         return;
     }
-    let xmlData = req.body;
+    var xmlData = req.body;
     if(typeof(xmlData) === "undefined" || xmlData === ""){
         // 缺少body
         logger.error("body need!");
@@ -33,10 +35,11 @@ router.post('/auth', function (req, res, next) {
         return;
     }
     // step1：解析xml
-    logger.info("xmlData：", xmlData);
-    parseWxString(xmlData).then((rawData) => {
-        // step2：校验sign
-        logger.info("rawData:", rawData);
+    parseWxString(xmlData).then((data) => {
+        // step2：解密消息
+        return DecryptMsg(data, xmlData, timestamp, nonce, msg_signature);
+    }).then((msg)=>{
+        logger.info("msg", msg);
         res.send("success");
     }).catch((error)=>{
         logger.error(error);
@@ -45,6 +48,16 @@ router.post('/auth', function (req, res, next) {
 });
 
 // function
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 解析微信发来的消息xml
+function DecryptMsg(data, xmlData, timestamp, nonce, msg_sign) {
+    return new Promise((resolve, reject) => {
+        let appid = data.AppId;
+        logger.info("appid:", appid);
+        resolve();
+    })
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 解析微信发来的消息xml
 function parseWxString(xml) {
