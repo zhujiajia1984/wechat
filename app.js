@@ -49,7 +49,7 @@ app.use('/wxKfMsg', wxKfMsg);
 app.use('/wxUser', wxUser);
 app.use('/wxPay', wxPay);
 app.use('/wxAppLogin', wxAppLogin);
-app.use('/wxPlatform', wxPlatform);
+app.use('/platform', wxPlatform);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
