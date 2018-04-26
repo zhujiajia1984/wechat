@@ -1,7 +1,7 @@
 var express = require('express');
 var path = require('path');
 // var favicon = require('serve-favicon');
-var logger = require('morgan');
+// var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var log4js = require('log4js');
@@ -16,6 +16,7 @@ var wxKfMsg = require('./routes/wxKfMsg');
 var wxUser = require('./routes/wxUser');
 var wxPay = require('./routes/wxPay');
 var wxAppLogin = require('./routes/wxAppLogin');
+var wxPlatform = require('./routes/wxPlatform.');
 //
 var app = express();
 
@@ -48,6 +49,7 @@ app.use('/wxKfMsg', wxKfMsg);
 app.use('/wxUser', wxUser);
 app.use('/wxPay', wxPay);
 app.use('/wxAppLogin', wxAppLogin);
+app.use('/wxPlatform', wxPlatform);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
