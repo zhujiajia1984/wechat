@@ -2,7 +2,7 @@
 
 // RedisClient：连接Redis服务器
 var portR = '6379';
-var ipR = 'redis_redis_1';
+var ipR = '139.224.132.110';
 var optionR = { auth_pass: 'zjj15202185069' };
 var redisClient = redis.createClient(portR, ipR, optionR);
 

@@ -16,7 +16,7 @@ var wxKfMsg = require('./routes/wxKfMsg');
 var wxUser = require('./routes/wxUser');
 var wxPay = require('./routes/wxPay');
 var wxAppLogin = require('./routes/wxAppLogin');
-var wxPlatform = require('./routes/wxPlatform.');
+var wxPlatform = require('./routes/wxPlatform');
 //
 var app = express();
 
