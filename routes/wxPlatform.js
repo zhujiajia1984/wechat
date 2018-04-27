@@ -55,21 +55,7 @@ router.post('/auth', function (req, res, next) {
 
 // function
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 保存xml到redis, key为appid
-function saveXml(data, xmlData) {
-    return new Promise((resolve, reject) => {
-        xmlData = xmlData.replace(/\s/g, "");   // 删除空格
-        xmlData = xmlData.replace(/[\r\n]/g, "");   // 删除回车
-        xmlData = xmlData.replace("AppId", "ToUserName");   // Appid替换为ToUserName
-        redisClient.set(data.AppId, xmlData, (err, result) => {
-            if (err) return reject(err);
-            return resolve(data);
-        })
-    })
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 解析微信发来的消息xml
+// 解密消息
 function DecryptMsg(data, xmlData, timestamp, nonce, msg_sign) {
     return new Promise((resolve, reject) => {
         let appid = data.AppId;
@@ -96,6 +82,21 @@ function parseWxString(xml) {
                 return resolve(result.xml);
             }
         });
+    })
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 保存xml到redis, key为appid
+function saveXml(data, xmlData) {
+    return new Promise((resolve, reject) => {
+        xmlData = xmlData.replace(/\s/g, "");   // 删除空格
+        xmlData = xmlData.replace(/[\r\n]/g, "");   // 删除回车
+        xmlData = xmlData.replace(/AppId/g, "ToUserName");   // Appid替换为ToUserName
+        let key = data.AppId + "_xmlBody";
+        redisClient.set(key, xmlData, (err, result) => {
+            if (err) return reject(err);
+            return resolve(data);
+        })
     })
 }
 
