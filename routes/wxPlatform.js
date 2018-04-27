@@ -60,6 +60,7 @@ function saveXml(data, xmlData) {
     return new Promise((resolve, reject) => {
         xmlData = xmlData.replace(/\s/g, "");   // 删除空格
         xmlData = xmlData.replace(/[\r\n]/g, "");   // 删除回车
+        xmlData = xmlData.replace("AppId", "ToUserName");   // Appid替换为ToUserName
         redisClient.set(data.AppId, xmlData, (err, result) => {
             if (err) return reject(err);
             return resolve(data);

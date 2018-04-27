@@ -2,3 +2,5 @@
 /*.sublime-workspace
 /*.sublime-project
 /.idea
+/wxLibs/WxMsgCrypt/WXBizMsgCrypt.pyc
+/wxLibs/WxMsgCrypt/ierror.pyc

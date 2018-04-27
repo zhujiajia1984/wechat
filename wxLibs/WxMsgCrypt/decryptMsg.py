@@ -21,7 +21,7 @@ if __name__ == "__main__":
    timestamp = sys.argv[5]
    nonce = sys.argv[6]
    r = redis.StrictRedis(host='redis_redis_1', port=6379, db=1, password='zjj15202185069')
-   from_xml = r.get(appid);
+   from_xml = r.get(str(appid));
    decrypt_test = WXBizMsgCrypt(token,encodingAESKey,appid)
    ret ,decryp_xml = decrypt_test.DecryptMsg(from_xml, msg_sign, timestamp, nonce)
    print ret ,decryp_xml
