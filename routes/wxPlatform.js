@@ -10,6 +10,7 @@ var path = require('path');
 var logger = require('../logs/log4js').logger;
 var parseString = require('xml2js').parseString;
 var exec = require('child_process').exec;
+var redisClient = require('../redis');
 
 // const
 const encodingAESKey = "qPcxoOmy62xVVzwSvp2OSVqg6UAzcHO1ORqg8PHVi8q";
@@ -30,7 +31,7 @@ router.post('/auth', function (req, res, next) {
         return;
     }
     var xmlData = req.body;
-    if(typeof(xmlData) === "undefined" || xmlData === ""){
+    if (typeof(xmlData) === "undefined" || xmlData === "") {
         // 缺少body
         logger.error("body need!");
         res.status(417).send("body need!");
@@ -38,12 +39,15 @@ router.post('/auth', function (req, res, next) {
     }
     // step1：解析xml
     parseWxString(xmlData).then((data) => {
-        // step2：解密消息
+        // step2：保存xml
+        return saveXml(data, xmlData);
+    }).then((data) => {
+        // step3：解密消息
         return DecryptMsg(data, xmlData, timestamp, nonce, msg_signature);
-    }).then((msg)=>{
-        // logger.info("msg", msg);
+    }).then((result) => {
+        logger.info("result:", result);
         res.send("success");
-    }).catch((error)=>{
+    }).catch((error) => {
         logger.error(error);
         res.status(417).send("error");
     })
@@ -51,14 +55,27 @@ router.post('/auth', function (req, res, next) {
 
 // function
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 保存xml到redis, key为appid
+function saveXml(data, xmlData) {
+    return new Promise((resolve, reject) => {
+        xmlData = xmlData.replace(/\s/g, "");   // 删除空格
+        xmlData = xmlData.replace(/[\r\n]/g, "");   // 删除回车
+        redisClient.set(data.AppId, xmlData, (err, result) => {
+            if (err) return reject(err);
+            return resolve(data);
+        })
+    })
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 解析微信发来的消息xml
 function DecryptMsg(data, xmlData, timestamp, nonce, msg_sign) {
     return new Promise((resolve, reject) => {
         let appid = data.AppId;
         let dir = path.resolve(__dirname, "../wxLibs/WxMsgCrypt");
-        let command = `python ${dir}/decryptMsg.py ${token} ${encodingAESKey} ${appid} ${xmlData} ${msg_sign} ${timestamp} ${nonce}`;
-        exec(command, (err, stdout, stderr)=>{
-            if(err) return reject(err);
+        let command = `python ${dir}/decryptMsg.py ${token} ${encodingAESKey} ${appid} ${msg_sign} ${timestamp} ${nonce}`;
+        exec(command, (err, stdout, stderr) => {
+            if (err) return reject(err);
             return resolve(stdout);
         })
     })
