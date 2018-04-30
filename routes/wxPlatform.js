@@ -1,8 +1,8 @@
 /*
-	微信第三方平台开发
-	API接口: 			https://wechat.weiquaninfo.cn/platform/XXX
-	授权事件接收URL： 	https://wechat.weiquaninfo.cn/platform/auth
-	获取预授权码：      https://wechat.weiquaninfo.cn/platform/getPreAuthCode
+    微信第三方平台开发
+    API接口:          https://wechat.weiquaninfo.cn/platform/XXX
+    授权事件接收URL：  https://wechat.weiquaninfo.cn/platform/auth
+    获取预授权码：      https://wechat.weiquaninfo.cn/platform/getPreAuthCode
 */
 
 var express = require('express');
@@ -15,6 +15,8 @@ var redisClient = require('../redis');
 var https = require('https');
 
 // const
+const url = 'mongodb://mongodb_mongodb_1:27017';
+const Account = require('./wxMongoAPI/wxPlatform/account/account');
 const platform_app_id = "wx805ef435fca595d2";
 const platform_app_screct = "2b499358fd347d6dc7e0cb38c384dc61";
 const encodingAESKey = "qPcxoOmy62xVVzwSvp2OSVqg6UAzcHO1ORqg8PHVi8q";
@@ -24,12 +26,12 @@ const component_access_token_refresh_time = 5400; // component_access_token刷�
 // router
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //授权事件接收URL
-router.post('/auth', function (req, res, next) {
+router.post('/auth', function(req, res, next) {
     // 解析param
-    let {signature, timestamp, nonce, encrypt_type, msg_signature} = req.query;
-    if (typeof(signature) === "undefined" || signature === "" || typeof(timestamp) === "undefined" || timestamp === ""
-        || typeof(nonce) === "undefined" || nonce === "" || typeof(encrypt_type) === "undefined" || encrypt_type === ""
-        || typeof(msg_signature) === "undefined" || msg_signature === "") {
+    let { signature, timestamp, nonce, encrypt_type, msg_signature } = req.query;
+    if (typeof(signature) === "undefined" || signature === "" || typeof(timestamp) === "undefined" || timestamp === "" ||
+        typeof(nonce) === "undefined" || nonce === "" || typeof(encrypt_type) === "undefined" || encrypt_type === "" ||
+        typeof(msg_signature) === "undefined" || msg_signature === "") {
         // 缺少参数
         logger.error("query need!");
         res.status(417).send("query need!");
@@ -53,10 +55,13 @@ router.post('/auth', function (req, res, next) {
         // step4：解析消息并保存ticket
         return parseXmlAndSaveTicket(xml);
     }).then((data) => {
-        switch(data.infoType){
+        switch (data.infoType) {
             case "component_verify_ticket":
                 // 每隔10分钟推送ticket，检查component_access_token有效期，如果快过期了，则使用component_verify_ticket更新
                 return setComponentAccessToken(data);
+            case "authorized":
+                // 微信授权成功通知
+                return authSuccess(data);
             default:
                 return data;
         }
@@ -86,11 +91,24 @@ router.post('/getPreAuthCode', (req, res, next) => {
 
 // function
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 微信授权成功
+function authSuccess(data) {
+    return new Promise((resolve, reject) => {
+        let account = new Account(url);
+        account.updateByAuthorized(data).then((result) => {
+            resolve(result);
+        }).catch((error) => {
+            reject(error);
+        })
+    })
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 重新获取预授权码
 function getPreAuthCode(data) {
     return new Promise((resolve, reject) => {
         if (data.msg === "ok") return resolve(data);
-        const postData = JSON.stringify({component_appid: platform_app_id});
+        const postData = JSON.stringify({ component_appid: platform_app_id });
         const options = {
             hostname: "api.weixin.qq.com",
             path: `/cgi-bin/component/api_create_preauthcode?component_access_token=${data.component_access_token}`,
@@ -218,27 +236,22 @@ function parseXmlAndSaveTicket(xml) {
                 return reject(err);
             } else {
                 let infoType = result.xml.InfoType;
-                switch (infoType) {
-                    case "component_verify_ticket":
-                        // 每10分钟一次ticket推送
-                        let component_verify_ticket = result.xml.ComponentVerifyTicket;
-                        let key = result.xml.AppId + "_component_verify_ticket";
-                        redisClient.set(key, component_verify_ticket, (err, reply) => {
-                            if (err) return reject(err);
-                            return resolve({
-                                appid: result.xml.AppId,
-                                infoType: infoType,
-                                component_verify_ticket: component_verify_ticket
-                            });
-                        });
-                        break;
-                    default:
-                        // 授权成功、取消授权和授权更新
+                if (infoType === "component_verify_ticket") {
+                    let component_verify_ticket = result.xml.ComponentVerifyTicket;
+                    let key = result.xml.AppId + "_component_verify_ticket";
+                    redisClient.set(key, component_verify_ticket, (err, reply) => {
+                        if (err) return reject(err);
                         return resolve({
                             appid: result.xml.AppId,
-                            infoType: infoType
+                            infoType: infoType,
+                            component_verify_ticket: component_verify_ticket
                         });
-                        break;
+                    });
+                } else {
+                    // 授权成功、取消授权或授权更新
+                    let data = result.xml;
+                    data.infoType = infoType;
+                    return resolve(data);
                 }
             }
         });
@@ -283,9 +296,9 @@ function parseWxString(xml) {
 // 保存xml到redis, key为appid
 function saveXml(data, xmlData) {
     return new Promise((resolve, reject) => {
-        xmlData = xmlData.replace(/\s/g, "");   // 删除空格
-        xmlData = xmlData.replace(/[\r\n]/g, "");   // 删除回车
-        xmlData = xmlData.replace(/AppId/g, "ToUserName");   // Appid替换为ToUserName
+        xmlData = xmlData.replace(/\s/g, ""); // 删除空格
+        xmlData = xmlData.replace(/[\r\n]/g, ""); // 删除回车
+        xmlData = xmlData.replace(/AppId/g, "ToUserName"); // Appid替换为ToUserName
         let key = data.AppId + "_xmlBody";
         redisClient.set(key, xmlData, (err, result) => {
             if (err) return reject(err);
