@@ -55,13 +55,16 @@ router.post('/auth', function(req, res, next) {
         // step4：解析消息并保存ticket
         return parseXmlAndSaveTicket(xml);
     }).then((data) => {
-        switch (data.infoType) {
+        switch (data.InfoType) {
             case "component_verify_ticket":
                 // 每隔10分钟推送ticket，检查component_access_token有效期，如果快过期了，则使用component_verify_ticket更新
                 return setComponentAccessToken(data);
             case "authorized":
                 // 微信授权成功通知
                 return authSuccess(data);
+            case "unauthorized":
+                // 微信授权取消通知
+                return authDelete(data);
             default:
                 return data;
         }
@@ -91,12 +94,32 @@ router.post('/getPreAuthCode', (req, res, next) => {
 
 // function
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 微信授权成功
+// 微信授权删除通知
+function authDelete(data) {
+    return new Promise((resolve, reject) => {
+        let account = new Account(url);
+        account.authDelete(data).then((result) => {
+            if (result.deletedCount === 1) {
+                resolve("unauthorized delete ok");
+            } else {
+                throw new Error(`unauthorized success but delete failed: ${JSON.stringify(result.result)}`);
+            }
+        }).catch((error) => {
+            reject(error);
+        })
+    })
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 微信授权成功通知
 function authSuccess(data) {
     return new Promise((resolve, reject) => {
         let account = new Account(url);
         account.updateByAuthorized(data).then((result) => {
-            resolve(result);
+            if (result.n === 1 && result.ok === 1) {
+                resolve(`authorized success: ${JSON.stringify(result)}`);
+            } else {
+                throw new Error(`authorized success but save failed: ${JSON.stringify(result)}`);
+            }
         }).catch((error) => {
             reject(error);
         })
@@ -243,15 +266,13 @@ function parseXmlAndSaveTicket(xml) {
                         if (err) return reject(err);
                         return resolve({
                             appid: result.xml.AppId,
-                            infoType: infoType,
+                            InfoType: infoType,
                             component_verify_ticket: component_verify_ticket
                         });
                     });
                 } else {
                     // 授权成功、取消授权或授权更新
-                    let data = result.xml;
-                    data.infoType = infoType;
-                    return resolve(data);
+                    return resolve(result.xml);
                 }
             }
         });

@@ -25,6 +25,17 @@ module.exports = class User {
             upsert: true
         });
         client.close();
+        return result.result;
+    }
+    // 授权取消后通知：删除授权账号
+    async authDelete(data) {
+        const client = await MongoClient.connect(this.url);
+        const db = client.db("wxPlatform");
+        let result = await db.collection('account').deleteOne({
+            authorizer_appid: data.AuthorizerAppid,
+            component_appid: data.AppId
+        });
+        client.close();
         return result;
     }
 
