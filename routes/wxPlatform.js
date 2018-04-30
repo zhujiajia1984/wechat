@@ -53,8 +53,13 @@ router.post('/auth', function (req, res, next) {
         // step4：解析消息并保存ticket
         return parseXmlAndSaveTicket(xml);
     }).then((data) => {
-        // step5：检查component_access_token有效期，如果快过期了，则使用component_verify_ticket更新
-        return setComponentAccessToken(data);
+        switch(data.infoType){
+            case "component_verify_ticket":
+                // 每隔10分钟推送ticket，检查component_access_token有效期，如果快过期了，则使用component_verify_ticket更新
+                return setComponentAccessToken(data);
+            default:
+                return data;
+        }
     }).then((result) => {
         logger.info("result:", result);
         res.send("success");
@@ -144,7 +149,6 @@ function getPreAuthCodeFromRedis() {
                         component_access_token: token
                     });
                 })
-
             }
         })
     })
@@ -213,15 +217,29 @@ function parseXmlAndSaveTicket(xml) {
             if (err) {
                 return reject(err);
             } else {
-                let component_verify_ticket = result.xml.ComponentVerifyTicket;
-                let key = result.xml.AppId + "_component_verify_ticket";
-                redisClient.set(key, component_verify_ticket, (err, reply) => {
-                    if (err) return reject(err);
-                    return resolve({
-                        appid: result.xml.AppId,
-                        component_verify_ticket: component_verify_ticket
-                    });
-                })
+                let infoType = result.xml.InfoType;
+                switch (infoType) {
+                    case "component_verify_ticket":
+                        // 每10分钟一次ticket推送
+                        let component_verify_ticket = result.xml.ComponentVerifyTicket;
+                        let key = result.xml.AppId + "_component_verify_ticket";
+                        redisClient.set(key, component_verify_ticket, (err, reply) => {
+                            if (err) return reject(err);
+                            return resolve({
+                                appid: result.xml.AppId,
+                                infoType: infoType,
+                                component_verify_ticket: component_verify_ticket
+                            });
+                        });
+                        break;
+                    default:
+                        // 授权成功、取消授权和授权更新
+                        return resolve({
+                            appid: result.xml.AppId,
+                            infoType: infoType
+                        });
+                        break;
+                }
             }
         });
     })
