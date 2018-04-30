@@ -2,6 +2,7 @@
 	微信第三方平台开发
 	API接口: 			https://wechat.weiquaninfo.cn/platform/XXX
 	授权事件接收URL： 	https://wechat.weiquaninfo.cn/platform/auth
+	获取预授权码：      https://wechat.weiquaninfo.cn/platform/getPreAuthCode
 */
 
 var express = require('express');
@@ -63,7 +64,92 @@ router.post('/auth', function (req, res, next) {
     })
 });
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//获取预授权码
+router.post('/getPreAuthCode', (req, res, next) => {
+    // step1：尝试从redis中获取
+    getPreAuthCodeFromRedis().then((result) => {
+        return getPreAuthCode(result);
+    }).then((result) => {
+        res.status(200).send(result);
+    }).catch((error) => {
+        logger.error(error);
+        res.status(417).send(error);
+    })
+})
+
+
 // function
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 重新获取预授权码
+function getPreAuthCode(data) {
+    return new Promise((resolve, reject) => {
+        if (data.msg === "ok") return resolve(data);
+        const postData = JSON.stringify({component_appid: platform_app_id});
+        const options = {
+            hostname: "api.weixin.qq.com",
+            path: `/cgi-bin/component/api_create_preauthcode?component_access_token=${data.component_access_token}`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(postData, 'utf-8')
+            }
+        };
+        const req = https.request(options, (res) => {
+            res.setEncoding('utf8');
+            let rawData = '';
+            res.on('data', (chunk) => {
+                rawData += chunk;
+            });
+            res.on('end', () => {
+                // 反馈结果
+                let result = JSON.parse(rawData);
+                // 保存
+                let key = platform_app_id + "_pre_auth_code";
+                redisClient.set(key, result.pre_auth_code, 'EX', result.expires_in, (err, reply) => {
+                    if (err) return reject(err);
+                    return resolve({
+                        msg: "ok",
+                        pre_auth_code: result.pre_auth_code
+                    });
+                })
+            });
+        });
+        req.on('error', (e) => {
+            reject(`problem with request: ${e.message}`);
+        });
+        req.write(postData);
+        req.end();
+    })
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 从redis中尝试获取预授权码，如果没有则重新获取
+function getPreAuthCodeFromRedis() {
+    return new Promise((resolve, reject) => {
+        let key = platform_app_id + "_pre_auth_code";
+        redisClient.get(key, (err, result) => {
+            if (err) return reject(err);
+            if (result) {
+                return resolve({
+                    msg: "ok",
+                    pre_auth_code: result
+                });
+            } else {
+                let keyToken = platform_app_id + "_component_access_token";
+                redisClient.get(keyToken, (err, token) => {
+                    if (err) return reject(err);
+                    return resolve({
+                        msg: "missing",
+                        component_access_token: token
+                    });
+                })
+
+            }
+        })
+    })
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 检查component_access_token有效期，如果快过期了，则使用component_verify_ticket更新
 function setComponentAccessToken(data) {
